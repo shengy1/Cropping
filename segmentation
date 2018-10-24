@@ -1,0 +1,60 @@
+#! usr/bin/sh
+
+DATA_DIR="/home/shengsheng/cardiac/data/"
+AP="/home/shengsheng/bin/ants/bin/"
+
+inspiration1="data/ban.nii.gz"
+inspiration2="data/bei.nii.gz"
+inspiration3="data/cai.nii.gz"
+mask1="data/ban_seg2.nii.gz"
+mask2="data/bei_seg2.nii.gz"
+mask3="data/cai_seg2.nii.gz"
+expiration="data/liu.nii.gz"
+
+mkdir -p "/home/shengsheng/cardiac/predictions/"
+
+inspiration1Preprocessed="predictions/ban_preprocessed.nii.gz"
+inspiration2Preprocessed="predictions/bei_preprocessed.nii.gz"
+inspiration3Preprocessed="predictions/cai_preprocessed.nii.gz"
+expirationPreprocessed="predictions/liu_preprocessed.nii.gz"
+
+
+################
+#
+# Do some preprocessing
+#   0. Rescale image intensities
+#   1. Truncate image intensities
+#   1. Denoise image
+#
+
+#echo "Preprocessing:  Rescale image intensities."
+
+ImageMath 3 $inspiration1Preprocessed RescaleImage $inspiration1 0 1
+ImageMath 3 $inspiration2Preprocessed RescaleImage $inspiration2 0 1
+ImageMath 3 $inspiration3Preprocessed RescaleImage $inspiration3 0 1
+ImageMath 3 $expirationPreprocessed RescaleImage $expiration 0 1
+
+#echo "Preprocessing:  Truncate image intensities."
+
+ImageMath 3 $inspiration1Preprocessed TruncateImageIntensity $inspiration1Preprocessed
+ImageMath 3 $inspiration2Preprocessed TruncateImageIntensity $inspiration2Preprocessed
+ImageMath 3 $inspiration3Preprocessed TruncateImageIntensity $inspiration3Preprocessed
+ImageMath 3 $expirationPreprocessed TruncateImageIntensity $expirationPreprocessed
+
+#echo "Preprocessing:  Denoise."
+
+DenoiseImage -d 3 -v 1 -i $inspiration1Preprocessed -o $inspiration1Preprocessed
+DenoiseImage -d 3 -v 1 -i $inspiration2Preprocessed -o $inspiration2Preprocessed
+DenoiseImage -d 3 -v 1 -i $inspiration3Preprocessed -o $inspiration3Preprocessed
+DenoiseImage -d 3 -v 1 -i $expirationPreprocessed -o $expirationPreprocessed
+
+
+
+$AP/antsJointLabelFusion.sh \
+    	-d 3 -t $expirationPreprocessed \
+    	-c 2 -j 8 \
+		-x majorityvoting \
+    	-o predictions/liu_pred \
+    	-g $inspiration1Preprocessed -l $mask1 \
+    	-g $inspiration2Preprocessed -l $mask2 \
+		-g $inspiration3Preprocessed -l $mask3 
